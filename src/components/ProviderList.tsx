@@ -322,15 +322,12 @@ const ProviderList: React.FC<ProviderListProps> = ({
                     {provider.name.toLowerCase().includes("fizzlycode") && (
                       <>
                         {(() => {
-                          // Check if API key is configured
-                          const hasApiKey = appType === "claude"
-                            ? provider.settingsConfig?.env?.ANTHROPIC_AUTH_TOKEN
-                            : provider.settingsConfig?.auth?.OPENAI_API_KEY;
-
+                          // FizzlyCode uses shared authentication across both Claude and Codex
                           // Check if user has saved FizzlyCode authentication
+                          const hasSavedApiKey = localStorage.getItem('fizzlycode_api_key');
                           const hasSavedAuth = localStorage.getItem('fizzlycode_token');
 
-                          if (hasApiKey) {
+                          if (hasSavedApiKey && hasSavedAuth) {
                             // API Key is configured - show status
                             return (
                               <div className="inline-flex items-center gap-2">
@@ -348,20 +345,8 @@ const ProviderList: React.FC<ProviderListProps> = ({
                                 </button>
                               </div>
                             );
-                          } else if (hasSavedAuth) {
-                            // User has logged in before but no API key - might need to sync
-                            return (
-                              <button
-                                onClick={() => setShowFizzlyAuth(provider.id)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700"
-                                title="同步 FizzlyCode API Key"
-                              >
-                                <RefreshCw size={14} />
-                                同步 API Key
-                              </button>
-                            );
                           } else {
-                            // Not logged in and no API key
+                            // Not logged in - need to authenticate
                             return (
                               <button
                                 onClick={() => setShowFizzlyAuth(provider.id)}
