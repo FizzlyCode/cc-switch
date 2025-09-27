@@ -9,3 +9,5 @@ release/
 .npmrc
 CLAUDE.md
 AGENTS.md
+tauri_signing.key
+generate_key.js
