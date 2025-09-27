@@ -11,3 +11,5 @@ CLAUDE.md
 AGENTS.md
 tauri_signing.key
 generate_key.js
+generate_pubkey.js
+tauri_public_key.txt
