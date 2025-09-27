@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Provider } from "../types";
-import { Play, Edit3, Trash2, CheckCircle2, Users } from "lucide-react";
+import { Play, Edit3, Trash2, CheckCircle2, Users, LogIn, RefreshCw } from "lucide-react";
 import { buttonStyles, cardStyles, badgeStyles, cn } from "../lib/styles";
 import { AppType } from "../lib/tauri-api";
 import {
@@ -10,6 +10,7 @@ import {
 } from "../utils/vscodeSettings";
 import { getCodexBaseUrl } from "../utils/providerConfigUtils";
 import { useVSCodeAutoSync } from "../hooks/useVSCodeAutoSync";
+import FizzlyCodeAuth from "./FizzlyCodeAuth";
 // 不再在列表中显示分类徽章，避免造成困惑
 
 interface ProviderListProps {
@@ -18,6 +19,7 @@ interface ProviderListProps {
   onSwitch: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onSave?: (provider: Provider) => void;  // Add onSave prop
   appType?: AppType;
   onNotify?: (
     message: string,
@@ -32,6 +34,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
   onSwitch,
   onDelete,
   onEdit,
+  onSave,
   appType,
   onNotify,
 }) => {
@@ -185,6 +188,46 @@ const ProviderList: React.FC<ProviderListProps> = ({
     }
   };
 
+  // State for FizzlyCode authentication
+  const [showFizzlyAuth, setShowFizzlyAuth] = useState<string | null>(null);
+  const [localTestMode, setLocalTestMode] = useState(() => {
+    // Check if we're in development mode or if user has enabled local test mode
+    const isDev = import.meta.env.DEV;
+    const userPref = localStorage.getItem('fizzlycode_local_test');
+    return isDev || userPref === 'true';
+  });
+
+  // Handle FizzlyCode API key received
+  const handleFizzlyCodeApiKey = async (providerId: string, apiKey: string) => {
+    const provider = providers[providerId];
+    if (!provider) return;
+
+    // Update the provider's API key
+    const updatedProvider = { ...provider };
+    if (appType === "claude") {
+      if (!updatedProvider.settingsConfig.env) {
+        updatedProvider.settingsConfig.env = {};
+      }
+      updatedProvider.settingsConfig.env.ANTHROPIC_AUTH_TOKEN = apiKey;
+    } else if (appType === "codex") {
+      if (!updatedProvider.settingsConfig.auth) {
+        updatedProvider.settingsConfig.auth = {};
+      }
+      updatedProvider.settingsConfig.auth.OPENAI_API_KEY = apiKey;
+    }
+
+    // Save the updated provider
+    if (onSave) {
+      onSave(updatedProvider);
+    } else {
+      // Fallback to onEdit if onSave is not provided
+      onEdit(providerId);
+    }
+
+    // Show success notification
+    onNotify?.("API Key 已自动设置成功", "success", 2000);
+  };
+
   // 对供应商列表进行排序
   const sortedProviders = Object.values(providers).sort((a, b) => {
     // 按添加时间排序
@@ -275,6 +318,127 @@ const ProviderList: React.FC<ProviderListProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 ml-4">
+                    {/* FizzlyCode login/status button */}
+                    {provider.name.toLowerCase().includes("fizzlycode") && (
+                      <>
+                        {(() => {
+                          // Check if API key is configured
+                          const hasApiKey = appType === "claude"
+                            ? provider.settingsConfig?.env?.ANTHROPIC_AUTH_TOKEN
+                            : provider.settingsConfig?.auth?.OPENAI_API_KEY;
+
+                          // Check if user has saved FizzlyCode authentication
+                          const hasSavedAuth = localStorage.getItem('fizzlycode_token');
+
+                          if (hasApiKey) {
+                            // API Key is configured - show status
+                            return (
+                              <div className="inline-flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  <CheckCircle2 size={14} />
+                                  已配置
+                                </span>
+                                <button
+                                  onClick={() => setShowFizzlyAuth(provider.id)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors border border-gray-300 text-gray-600 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50 dark:border-gray-600 dark:text-gray-400 dark:hover:border-purple-700 dark:hover:text-purple-400 dark:hover:bg-purple-900/20"
+                                  title="重新配置 FizzlyCode 账户"
+                                >
+                                  <RefreshCw size={14} />
+                                  重新配置
+                                </button>
+                              </div>
+                            );
+                          } else if (hasSavedAuth) {
+                            // User has logged in before but no API key - might need to sync
+                            return (
+                              <button
+                                onClick={() => setShowFizzlyAuth(provider.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700"
+                                title="同步 FizzlyCode API Key"
+                              >
+                                <RefreshCw size={14} />
+                                同步 API Key
+                              </button>
+                            );
+                          } else {
+                            // Not logged in and no API key
+                            return (
+                              <button
+                                onClick={() => setShowFizzlyAuth(provider.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+                                title="登录 FizzlyCode 账户获取 API Key"
+                              >
+                                <LogIn size={14} />
+                                登录获取 Key
+                              </button>
+                            );
+                          }
+                        })()}
+                        {import.meta.env.DEV && (
+                          <button
+                            onClick={async () => {
+                              const newMode = !localTestMode;
+                              setLocalTestMode(newMode);
+                              localStorage.setItem('fizzlycode_local_test', newMode.toString());
+
+                              // 更新FizzlyCode供应商的API端点和网站URL
+                              const updatedProvider = { ...provider };
+                              const baseUrl = newMode ? 'http://localhost:3000' : 'https://fizzlycode.com';
+                              const apiUrl = newMode ? 'http://localhost:3000/api' : 'https://fizzlycode.com/api';
+
+                              // 更新网站URL
+                              updatedProvider.websiteUrl = baseUrl;
+
+                              // 更新API端点
+                              if (appType === "claude") {
+                                if (!updatedProvider.settingsConfig) {
+                                  updatedProvider.settingsConfig = { env: {} };
+                                }
+                                if (!updatedProvider.settingsConfig.env) {
+                                  updatedProvider.settingsConfig.env = {};
+                                }
+                                updatedProvider.settingsConfig.env.ANTHROPIC_BASE_URL = apiUrl;
+                              } else if (appType === "codex") {
+                                // 为Codex更新config.toml内容
+                                const codexApiUrl = newMode ? 'http://localhost:3000/openai' : 'https://fizzlycode.com/openai';
+                                const configContent = `model_provider = "fizzlycode"
+model = "gpt-5"  # Can be changed to "gpt-5-codex" for enhanced reasoning
+model_reasoning_effort = "high"
+disable_response_storage = true
+
+[model_providers.fizzlycode]
+name = "fizzlycode"
+base_url = "${codexApiUrl}"
+wire_api = "responses"
+requires_openai_auth = true  # IMPORTANT: Add this for model switching support`;
+
+                                if (!updatedProvider.settingsConfig) {
+                                  updatedProvider.settingsConfig = { config: configContent };
+                                } else {
+                                  updatedProvider.settingsConfig.config = configContent;
+                                }
+                              }
+
+                              // 保存更新后的供应商配置
+                              if (onSave) {
+                                await onSave(updatedProvider);
+                              }
+
+                              onNotify?.(
+                                `切换到${newMode ? '本地测试' : '生产'}环境`,
+                                "success",
+                                2000
+                              );
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded"
+                            title={localTestMode ? '切换到生产环境' : '切换到本地测试环境'}
+                          >
+                            {localTestMode ? 'Local' : 'Prod'}
+                          </button>
+                        )}
+                      </>
+                    )}
+
                     {appType === "codex" &&
                       provider.category !== "official" && (
                         <button
@@ -342,6 +506,26 @@ const ProviderList: React.FC<ProviderListProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* FizzlyCode Authentication Modal */}
+      {showFizzlyAuth && (
+        <FizzlyCodeAuth
+          provider={providers[showFizzlyAuth]}
+          appType={appType || "claude"}
+          onApiKeyReceived={(apiKey) => {
+            handleFizzlyCodeApiKey(showFizzlyAuth, apiKey);
+            setShowFizzlyAuth(null);
+          }}
+          onClose={() => setShowFizzlyAuth(null)}
+          useLocalhost={localTestMode}
+          onProviderUpdate={(updatedProvider) => {
+            // Save the updated provider configuration when environment switches
+            if (onSave) {
+              onSave(updatedProvider);
+            }
+          }}
+        />
       )}
     </div>
   );
