@@ -46,7 +46,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHRhdXJpIHNpZ25pbmcga2V5Cnd3ZTR5OEpaTFdjVmNjT1hJWi9Xb1kxMDZGQllidi9VNmxYWEtJbjNWem89",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgN0Y0QkUyNzU2RjlBRTVGRQ0KUldUKzVacHZkZUpMZitMNkxleFRpcGEzbWFSZTNhdHNEc09SZFEwMkkydFd1VVFxYlNwSWVlN0kNCg==",
       "endpoints": [
         "https://github.com/JonathonRebello/cc-switch/releases/latest/download/latest.json"
       ]

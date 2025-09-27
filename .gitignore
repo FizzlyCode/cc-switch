@@ -10,6 +10,14 @@ release/
 CLAUDE.md
 AGENTS.md
 tauri_signing.key
+tauri_signing_correct.key
+tauri.key
+tauri.pub
 generate_key.js
 generate_pubkey.js
 tauri_public_key.txt
+encode_pubkey.ps1
+download_minisign.ps1
+generate_keys.bat
+minisign.zip
+minisign-win64/
