@@ -39,6 +39,7 @@ interface AuthConfig {
 }
 
 class FizzlyCodeAuthService {
+  private static instance: FizzlyCodeAuthService | null = null;
   private config: AuthConfig;
   private pollingInterval: NodeJS.Timeout | null = null;
 
@@ -46,6 +47,26 @@ class FizzlyCodeAuthService {
     this.config = {
       baseUrl: config.baseUrl || 'https://fizzlycode.com',
       clientId: config.clientId || 'cc-switch'
+    };
+  }
+
+  /**
+   * Get or create singleton instance
+   */
+  static getInstance(config?: AuthConfig): FizzlyCodeAuthService {
+    if (!FizzlyCodeAuthService.instance) {
+      FizzlyCodeAuthService.instance = new FizzlyCodeAuthService(config || {});
+    }
+    return FizzlyCodeAuthService.instance;
+  }
+
+  /**
+   * Update the base URL for the instance
+   */
+  updateConfig(config: Partial<AuthConfig>): void {
+    this.config = {
+      ...this.config,
+      ...config
     };
   }
 
@@ -282,3 +303,4 @@ class FizzlyCodeAuthService {
 }
 
 export default FizzlyCodeAuthService;
+export { FizzlyCodeAuthService };

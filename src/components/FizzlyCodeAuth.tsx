@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import FizzlyCodeAuthService from "../services/fizzlyCodeAuth";
+import { FizzlyCodeAuthService } from "../services/fizzlyCodeAuth";
 import { Loader2, ExternalLink, Key, Copy, CheckCircle, XCircle } from "lucide-react";
 
 interface FizzlyCodeAuthProps {
@@ -19,9 +19,7 @@ const FizzlyCodeAuth: React.FC<FizzlyCodeAuthProps> = ({
   useLocalhost = false,
   onProviderUpdate
 }) => {
-  const [authService] = useState(() => new FizzlyCodeAuthService({
-    baseUrl: useLocalhost ? 'http://localhost:3000' : 'https://fizzlycode.com'
-  }));
+  const authService = FizzlyCodeAuthService.getInstance();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [deviceCode, setDeviceCode] = useState<string | null>(null);
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
@@ -29,6 +27,13 @@ const FizzlyCodeAuth: React.FC<FizzlyCodeAuthProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [existingApiKey, setExistingApiKey] = useState<string | null>(null);
+
+  // Update authService config when environment changes
+  useEffect(() => {
+    authService.updateConfig({
+      baseUrl: useLocalhost ? 'http://localhost:3000' : 'https://fizzlycode.com'
+    });
+  }, [useLocalhost]);
 
   useEffect(() => {
     // Check for existing authentication
@@ -46,7 +51,7 @@ const FizzlyCodeAuth: React.FC<FizzlyCodeAuthProps> = ({
     return () => {
       authService.stopPolling();
     };
-  }, [authService]);
+  }, []);
 
   // Sync API endpoint and website URL when environment changes
   useEffect(() => {
@@ -68,13 +73,9 @@ const FizzlyCodeAuth: React.FC<FizzlyCodeAuthProps> = ({
         }
         updatedProvider.settingsConfig.env.ANTHROPIC_BASE_URL = apiUrl;
       } else if (appType === "codex") {
-        if (!updatedProvider.settingsConfig) {
-          updatedProvider.settingsConfig = { config: {} };
-        }
-        if (!updatedProvider.settingsConfig.config) {
-          updatedProvider.settingsConfig.config = {};
-        }
-        updatedProvider.settingsConfig.config.apiEndpoint = apiUrl;
+        // For Codex, config is a TOML string, not an object
+        // The base URL update for Codex is handled in ProviderList.tsx
+        // We don't need to modify the config here
       }
 
       // Call the update callback
