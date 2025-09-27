@@ -61,6 +61,22 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     config: ``,
   },
   {
+    name: "FizzlyCode",
+    websiteUrl: "https://fizzlycode.com",
+    category: "third_party",
+    auth: generateThirdPartyAuth(""),
+    config: `model_provider = "fizzlycode"
+model = "gpt-5"  # Can be changed to "gpt-5-codex" for enhanced reasoning
+model_reasoning_effort = "high"
+disable_response_storage = true
+
+[model_providers.fizzlycode]
+name = "fizzlycode"
+base_url = "https://fizzlycode.com/openai"
+wire_api = "responses"
+requires_openai_auth = true  # IMPORTANT: Add this for model switching support`,
+  },
+  {
     name: "PackyCode",
     websiteUrl: "https://codex.packycode.com/",
     category: "third_party",

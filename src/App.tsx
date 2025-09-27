@@ -15,6 +15,8 @@ import { extractErrorMessage } from "./utils/errorUtils";
 import { applyProviderToVSCode } from "./utils/vscodeSettings";
 import { getCodexBaseUrl } from "./utils/providerConfigUtils";
 import { useVSCodeAutoSync } from "./hooks/useVSCodeAutoSync";
+import { providerPresets } from "./config/providerPresets";
+import { codexProviderPresets } from "./config/codexProviderPresets";
 
 function App() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -122,9 +124,9 @@ function App() {
     setProviders(loadedProviders);
     setCurrentProviderId(currentId);
 
-    // 如果供应商列表为空，尝试自动从 live 导入一条默认供应商
+    // 如果供应商列表为空，自动添加FizzlyCode作为默认供应商
     if (Object.keys(loadedProviders).length === 0) {
-      await handleAutoImportDefault();
+      await handleAutoAddFizzlyCode();
     }
   };
 
@@ -264,20 +266,54 @@ function App() {
     }
   };
 
-  // 自动从 live 导入一条默认供应商（仅首次初始化时）
-  const handleAutoImportDefault = async () => {
+  // 自动添加FizzlyCode作为默认供应商
+  const handleAutoAddFizzlyCode = async () => {
     try {
-      const result = await window.api.importCurrentConfigAsDefault(activeApp);
+      let hasImportedConfig = false;
 
-      if (result.success) {
-        await loadProviders();
-        showNotification("已从现有配置创建默认供应商", "success", 3000);
-        // 更新托盘菜单
-        await window.api.updateTrayMenu();
+      // 首先，尝试导入用户的当前配置
+      const importResult = await window.api.importCurrentConfigAsDefault(activeApp);
+      if (importResult.success) {
+        hasImportedConfig = true;
+        showNotification("已从现有配置创建默认供应商", "success", 2000);
       }
-      // 如果导入失败（比如没有现有配置），静默处理，不显示错误
+
+      // 然后，添加FizzlyCode供应商
+      const presets = activeApp === "claude" ? providerPresets : codexProviderPresets;
+      const fizzlyCodePreset = presets.find(p => p.name === "FizzlyCode");
+
+      if (fizzlyCodePreset) {
+        // 创建FizzlyCode供应商
+        const newProvider: Provider = {
+          id: generateId(),
+          name: fizzlyCodePreset.name,
+          websiteUrl: fizzlyCodePreset.websiteUrl,
+          settingsConfig: activeApp === "claude"
+            ? fizzlyCodePreset.settingsConfig
+            : {
+                auth: (fizzlyCodePreset as any).auth,
+                config: (fizzlyCodePreset as any).config
+              },
+          category: (fizzlyCodePreset as any).category,
+          createdAt: Date.now()
+        };
+
+        await window.api.addProvider(newProvider, activeApp);
+
+        // 如果有导入的配置，显示两个供应商都已添加
+        if (hasImportedConfig) {
+          showNotification("已添加用户配置和 FizzlyCode 供应商", "success", 3000);
+        } else {
+          showNotification("已自动添加 FizzlyCode 供应商", "success", 3000);
+        }
+      }
+
+      // 重新加载供应商列表
+      await loadProviders();
+      await window.api.updateTrayMenu();
+
     } catch (error) {
-      console.error("自动导入默认配置失败:", error);
+      console.error("自动添加供应商失败:", error);
       // 静默处理，不影响用户体验
     }
   };
@@ -353,6 +389,7 @@ function App() {
               onSwitch={handleSwitchProvider}
               onDelete={handleDeleteProvider}
               onEdit={setEditingProviderId}
+              onSave={handleEditProvider}
               appType={activeApp}
               onNotify={showNotification}
             />

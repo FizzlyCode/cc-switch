@@ -24,6 +24,19 @@ export const providerPresets: ProviderPreset[] = [
     category: "official",
   },
   {
+    name: "FizzlyCode",
+    websiteUrl: "https://fizzlycode.com",
+    apiKeyUrl: "https://fizzlycode.com/dashboard",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://fizzlycode.com/api",
+        ANTHROPIC_AUTH_TOKEN: "",
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: 1,
+      },
+    },
+    category: "third_party",
+  },
+  {
     name: "DeepSeek",
     websiteUrl: "https://platform.deepseek.com",
     settingsConfig: {
